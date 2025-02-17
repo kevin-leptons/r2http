@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "lib": ["esnext"],
+    "types": ["@cloudflare/workers-types/2022-08-04"],
+    "outDir": "target"
+  },
+  "include": ["src/index.ts"]
+}
