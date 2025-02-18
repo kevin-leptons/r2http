@@ -7,7 +7,7 @@
  *  * `r2` A private Cloudflare R2 Bucket. This bucket is served on HTTP.
  *  * `USERNAME` A secret, username for HTTP basic authentication.
  *  * `PASSWORD` A secret, password for HTTP basic authentication.
- *  * `INDEX` List of index file in a directory such as "index.html,index.txt".
+ *  * `INDEX` List of index file in a directory such as "index.html:index.txt".
  */
 export default {
     async fetch(request, env) {
