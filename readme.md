@@ -9,7 +9,9 @@ Serve a Cloudflare R2 Bucket on HTTP with basic authentication.
 3. Bind the bucket to the worker as name `r2`.
 4. Set two secrets `USERNAME` and `PASSWORD` to the worker. These secrets are
    using for basic HTTP authentication.
-5. Verify the worker endpoint by `curl https://WORKER.ACCOUNT.workers.dev`.
+5. Set a variable `INDEX` which is list of file names. If request path does not,
+   then one of these files will be served. For example: `index.txt:index.html`.
+6. Verify the worker endpoint by `curl https://WORKER.ACCOUNT.workers.dev`.
    `WORKER` and `ACCOUNT` must be replaced properly.
 
 # Development

@@ -8,7 +8,8 @@ const PASSWORD = "***";
 const R2_BUCKET = "r2";
 const URL_ROOT = "https://foo.com";
 const URL_FOUND = "https://foo.com/bar/baz";
-const URL_NOT_FOUND = "https://foo.com/bar";
+const URL_INDEXED = "https://foo.com/baz";
+const URL_NOT_FOUND = "https://foo.com/zzz";
 let worker: Miniflare;
 
 before(async () => {
@@ -23,11 +24,26 @@ before(async () => {
         r2Buckets: [R2_BUCKET],
         bindings: {
             USERNAME,
-            PASSWORD
+            PASSWORD,
+            INDEX: "index.html:index.txt"
         }
     });
     const bucket = await worker.getR2Bucket(R2_BUCKET);
-    await bucket.put("bar/baz", "Welcome to the hell");
+    await bucket.put("bar/baz", "Welcome to the hell", {
+        httpMetadata: {
+            contentType: 'text/plain'
+        }
+    });
+    await bucket.put("baz/index.txt", "Welcome to the heaven", {
+        httpMetadata: {
+            contentType: 'text/plain'
+        }
+    });
+    await bucket.put("index.txt", "Welcome to the root", {
+        httpMetadata: {
+            contentType: 'text/plain'
+        }
+    });
     await worker.ready;
 });
 
@@ -81,6 +97,41 @@ test("reject method delete", async () => {
     let body = await response.text();
     assert.strictEqual(body, "405 - Method Not Allowed");
 });
+
+test("return mime type", async () => {
+    let response = await worker.dispatchFetch(URL_FOUND, {
+        headers: {
+            Authorization: getAuthorizationHeader()
+        }
+    });
+    assert.strictEqual(response.status, 200);
+    let body = await response.text();
+    let contentType = response.headers.get("content-type");
+    assert.strictEqual(contentType, "text/plain");
+    assert.strictEqual(body, "Welcome to the hell");
+})
+
+test("return index at non root", async () => {
+    let response = await worker.dispatchFetch(URL_INDEXED, {
+        headers: {
+            Authorization: getAuthorizationHeader()
+        }
+    });
+    assert.strictEqual(response.status, 200);
+    let body = await response.text();
+    assert.strictEqual(body, "Welcome to the heaven");
+})
+
+test("return index at root", async () => {
+    let response = await worker.dispatchFetch(URL_ROOT, {
+        headers: {
+            Authorization: getAuthorizationHeader()
+        }
+    });
+    assert.strictEqual(response.status, 200);
+    let body = await response.text();
+    assert.strictEqual(body, "Welcome to the root");
+})
 
 function buildTypescriptWorker() {
     spawnSync("npm run build", {

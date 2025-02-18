@@ -7,14 +7,23 @@
  *  * `r2` A private Cloudflare R2 Bucket. This bucket is served on HTTP.
  *  * `USERNAME` A secret, username for HTTP basic authentication.
  *  * `PASSWORD` A secret, password for HTTP basic authentication.
+ *  * `INDEX` List of index file in a directory such as "index.html,index.txt".
  */
 export default {
     async fetch(request, env) {
         try {
             assertGetMethod(request);
             authenticateBasic(request, env);
-            let object = await downloadR2Object(request, env.r2);
-            return createFileResponse(object);
+            let path = getRequestPath(request);
+            let object = await downloadR2Object(path, env.r2);
+            if (object) {
+                return createFileResponse(object);
+            }
+            let index = await downloadIndexFile(path, env.r2, env.INDEX);
+            if (index) {
+                return createFileResponse(index);
+            }
+            throw new HttpError(404, "Not found");
         }
         catch (error) {
             if (error instanceof HttpError) {
@@ -79,14 +88,32 @@ function extractBasicCredential(request) {
         password
     };
 }
-async function downloadR2Object(request, r2) {
+function getRequestPath(request) {
     let url = new URL(request.url);
-    let objectKey = url.pathname.substring(1);
-    let object = await r2.get(objectKey);
-    if (!object) {
-        throw new HttpError(404, "Not found");
-    }
+    return url.pathname.substring(1);
+}
+async function downloadR2Object(path, r2) {
+    let object = await r2.get(path);
     return object;
+}
+async function downloadIndexFile(requestPath, r2, indexFiles) {
+    let indexes = indexFiles.split(":").map((name) => name.trim());
+    for (let index of indexes) {
+        let indexFile = joinPath(requestPath, index);
+        let object = await downloadR2Object(indexFile, r2);
+        if (object) {
+            return object;
+        }
+    }
+    return undefined;
+}
+function joinPath(parent, child) {
+    let first = parent.endsWith("/") ? parent : parent + "/";
+    let second = child.startsWith("/")
+        ? child.substring(0, child.length - 1)
+        : child;
+    let out = first + second;
+    return out.startsWith("/") ? out.substring(1) : out;
 }
 function createFileResponse(object) {
     let { httpEtag } = object;
